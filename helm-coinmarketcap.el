@@ -30,7 +30,13 @@
 
 (defconst helmcoin--coinmarketcap-url "https://api.coinmarketcap.com/v1/ticker/")
 (defconst helmcoin--coinmarketcap-coin-site-url "https://coinmarketcap.com/currencies/")
+(defvar helm-coinmarketcap-currency "USD")
 
+(setq helm-coinmarketcap-currency "mxn")
+
+(defun helmcoin--currency ()
+  "Format the currency to be used in package."
+  (downcase helm-coinmarketcap-currency))
 
 (defun helmcoin--fetch-and-parse-json (url)
   "Fetch URL content and parse to alist."
@@ -41,21 +47,24 @@
 
 (defun helmcoin--fetch-data ()
   "Fetch data from Coinmarketcap API."
-  (helmcoin--fetch-and-parse-json helmcoin--coinmarketcap-url))
+  (helmcoin--fetch-and-parse-json (concat helmcoin--coinmarketcap-url "?convert=" (helmcoin--currency))))
 
 (defun helmcoin--format-coin (coin)
   "Format COIN information to show in helm results."
   (let ((name (cdr (assoc 'name coin)))
         (symbol (cdr (assoc 'symbol coin)))
         (rank (cdr (assoc 'rank coin)))
-        (price-usd (cdr (assoc 'price_usd coin)))
-        (market-cap-usd (cdr (assoc 'market_cap_usd coin))))
-    (format "%s - %s Rank: %s\nPrice USD: %s\nMarket cap USD: %s"
+        (price (cdr (assoc-string (concat "price_" (helmcoin--currency)) coin)))
+        (market-cap (cdr (assoc-string (concat "market_cap_" (helmcoin--currency)) coin)))
+        (currency (upcase (helmcoin--currency))))
+    (format "%s - %s Rank: %s\nPrice %s: %s\nMarketcap %s: %s"
             name
             symbol
             rank
-            price-usd
-            market-cap-usd)))
+            currency
+            price
+            currency
+            market-cap)))
 
 (defun helmcoin--candidates ()
   "Fetch data and converted to helm candidates."
@@ -68,7 +77,7 @@
 
 (defun helmcoin--open-buffer-with-json-data (coin)
   "Open COIN page in coinmarketcap site."
-  (let* ((url (concat helmcoin--coinmarketcap-url (cdr (assoc 'id coin))))
+  (let* ((url (concat helmcoin--coinmarketcap-url (cdr (assoc 'id coin)) "/?convert=" (helmcoin--currency)))
          (json-response (helmcoin--fetch-and-parse-json url))
          (new-buffer-name (format "%s.json" (cdr (assoc 'name coin)))))
     (switch-to-buffer (get-buffer-create new-buffer-name))
